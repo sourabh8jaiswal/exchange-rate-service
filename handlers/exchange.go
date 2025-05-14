@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"exchange-rate-serivce/services"
+	validation "exchange-rate-serivce/utills"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -22,6 +23,12 @@ func Convert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !validation.IsValidCurrency(from) || !validation.IsValidCurrency(to) {
+		// Check if the currency is valid
+		ErrorWith(w, http.StatusBadRequest, fmt.Errorf("invalid currency"))
+		return
+	}
+
 	amount := 1.0
 	var err error
 	amountStr := r.URL.Query().Get("amount")
@@ -34,7 +41,13 @@ func Convert(w http.ResponseWriter, r *http.Request) {
 	}
 	date := r.URL.Query().Get("date")
 	if date == "" {
-		ErrorWith(w, http.StatusBadRequest, fmt.Errorf("date cannot be empty"))
+		// if date is not provided, use the current date
+		date = time.Now().Format("2006-01-02")
+	}
+
+	err = validation.IsValidDate(date)
+	if err != nil {
+		ErrorWith(w, http.StatusBadRequest, err)
 		return
 	}
 
@@ -62,6 +75,12 @@ func LatestRate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !validation.IsValidCurrency(from) || !validation.IsValidCurrency(to) {
+		// Check if the currency is valid
+		ErrorWith(w, http.StatusBadRequest, fmt.Errorf("invalid currency"))
+		return
+	}
+
 	rate, err := services.GetRate(from, to, time.Now().Format("2006-01-02"))
 	if err != nil {
 		ErrorWith(w, http.StatusInternalServerError, err)
@@ -83,15 +102,33 @@ func HistoricaRates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !validation.IsValidCurrency(from) || !validation.IsValidCurrency(to) {
+		// Check if the currency is valid
+		ErrorWith(w, http.StatusBadRequest, fmt.Errorf("invalid currency"))
+		return
+	}
+
 	sdate := r.URL.Query().Get("startDate")
 	if sdate == "" {
 		ErrorWith(w, http.StatusBadRequest, fmt.Errorf("startDate cannot be empty"))
 		return
 	}
 
+	err := validation.IsValidDate(sdate)
+	if err != nil {
+		ErrorWith(w, http.StatusBadRequest, err)
+		return
+	}
+
 	edate := r.URL.Query().Get("endDate")
 	if edate == "" {
 		ErrorWith(w, http.StatusBadRequest, fmt.Errorf("endDate cannot be empty"))
+		return
+	}
+
+	err = validation.IsValidDate(edate)
+	if err != nil {
+		ErrorWith(w, http.StatusBadRequest, err)
 		return
 	}
 
